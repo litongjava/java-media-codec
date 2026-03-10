@@ -77,6 +77,54 @@ JNIEXPORT jint JNICALL Java_com_litongjava_media_MediaCodec_getPcmSamplesPer20ms
 JNIEXPORT jint JNICALL Java_com_litongjava_media_MediaCodec_getEncodedBytesPer20ms
   (JNIEnv *, jclass, jint, jint, jint, jint);
 
+/*
+ * Class:     com_litongjava_media_MediaCodec
+ * Method:    createResampler
+ * Signature: (IIIII)J
+ */
+JNIEXPORT jlong JNICALL Java_com_litongjava_media_MediaCodec_createResampler
+  (JNIEnv *, jclass, jint, jint, jint, jint, jint);
+
+/*
+ * Class:     com_litongjava_media_MediaCodec
+ * Method:    destroyResampler
+ * Signature: (J)V
+ */
+JNIEXPORT void JNICALL Java_com_litongjava_media_MediaCodec_destroyResampler
+  (JNIEnv *, jclass, jlong);
+
+/*
+ * Class:     com_litongjava_media_MediaCodec
+ * Method:    resampleDirect
+ * Signature: (JLjava/nio/ByteBuffer;ILjava/nio/ByteBuffer;)I
+ */
+JNIEXPORT jint JNICALL Java_com_litongjava_media_MediaCodec_resampleDirect
+  (JNIEnv *, jclass, jlong, jobject, jint, jobject);
+
+/*
+ * Class:     com_litongjava_media_MediaCodec
+ * Method:    resetResampler
+ * Signature: (J)I
+ */
+JNIEXPORT jint JNICALL Java_com_litongjava_media_MediaCodec_resetResampler
+  (JNIEnv *, jclass, jlong);
+
+/*
+ * Class:     com_litongjava_media_MediaCodec
+ * Method:    setResamplerRate
+ * Signature: (JII)I
+ */
+JNIEXPORT jint JNICALL Java_com_litongjava_media_MediaCodec_setResamplerRate
+  (JNIEnv *, jclass, jlong, jint, jint);
+
+/*
+ * Class:     com_litongjava_media_MediaCodec
+ * Method:    getResamplerExpectedOutputSamples
+ * Signature: (JI)I
+ */
+JNIEXPORT jint JNICALL Java_com_litongjava_media_MediaCodec_getResamplerExpectedOutputSamples
+  (JNIEnv *, jclass, jlong, jint);
+
 #ifdef __cplusplus
 }
 #endif
