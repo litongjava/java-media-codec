@@ -1,8 +1,54 @@
 # java-media-codec
 
-[绑定的c项目](https://gitee.com/ppnt/c-media-codec)
+`java-media-codec` 是一个 **Java JNI 音频编解码库**，提供以下音频 codec：
 
-## MediaCodec.java
+* **G.711 PCMU (μ-law)**
+* **G.711 PCMA (A-law)**
+* **G.722 wideband**
+
+该项目通过 JNI 调用纯 C 实现的 codec（见项目绑定的 C 实现）。
+
+C 实现项目：
+
+**c-media-codec**
+
+[https://gitee.com/ppnt/c-media-codec](https://gitee.com/ppnt/c-media-codec)
+
+---
+
+# Features
+
+* 支持 **G711 / G722**
+
+* **JNI DirectByteBuffer 零拷贝**
+
+* **低延迟音频处理**
+
+* 适用于：
+
+  * RTP
+  * VoIP
+  * SIP
+  * Media Server
+  * Audio Gateway
+
+* 纯 C codec 实现
+
+* 无额外第三方依赖
+
+---
+
+# Codec Support
+
+| Codec | RTP Payload Type | Sample Rate                    | Bitrate         |
+| ----- | ---------------- | ------------------------------ | --------------- |
+| PCMU  | 0                | 8000                           | 64kbps          |
+| PCMA  | 8                | 8000                           | 64kbps          |
+| G722  | 9                | 16000 (PCM) / 8000 (RTP clock) | 64k / 56k / 48k |
+
+---
+
+# MediaCodec.java
 
 ```java
 package com.litongjava.media;
@@ -38,7 +84,7 @@ public final class MediaCodec {
 
 ---
 
-## Example: G.722 encode / decode
+# Example: G.722 Encode / Decode
 
 ```java
 package com.litongjava.media;
@@ -49,6 +95,7 @@ import java.nio.ByteOrder;
 public class MediaCodecDemoG722 {
 
   public static void main(String[] args) {
+
     int codecType = MediaCodec.CODEC_G722;
     int sampleRate = 16000;
     int channels = 1;
@@ -57,10 +104,6 @@ public class MediaCodecDemoG722 {
 
     int pcmSamples = MediaCodec.getPcmSamplesPer20ms(codecType, sampleRate, channels);
     int encodedBytes = MediaCodec.getEncodedBytesPer20ms(codecType, sampleRate, channels, bitrate);
-
-    if (pcmSamples <= 0 || encodedBytes <= 0) {
-      throw new IllegalStateException("invalid frame size, pcmSamples=" + pcmSamples + ", encodedBytes=" + encodedBytes);
-    }
 
     ByteBuffer pcmIn = ByteBuffer.allocateDirect(pcmSamples * 2).order(ByteOrder.LITTLE_ENDIAN);
     ByteBuffer encoded = ByteBuffer.allocateDirect(encodedBytes);
@@ -74,29 +117,14 @@ public class MediaCodecDemoG722 {
     long encoder = MediaCodec.createEncoder(codecType, sampleRate, channels, bitrate, options);
     long decoder = MediaCodec.createDecoder(codecType, sampleRate, channels, bitrate, options);
 
-    if (encoder == 0 || decoder == 0) {
-      throw new IllegalStateException("create encoder/decoder failed");
-    }
-
     try {
-      int encLen = MediaCodec.encodeDirect(encoder, pcmIn, pcmSamples, encoded);
-      System.out.println("G722 encoded bytes = " + encLen);
 
-      if (encLen < 0) {
-        throw new IllegalStateException("encode failed: " + encLen);
-      }
+      int encLen = MediaCodec.encodeDirect(encoder, pcmIn, pcmSamples, encoded);
+      System.out.println("encoded bytes = " + encLen);
 
       int decSamples = MediaCodec.decodeDirect(decoder, encoded, encLen, pcmOut);
-      System.out.println("G722 decoded samples = " + decSamples);
+      System.out.println("decoded samples = " + decSamples);
 
-      if (decSamples < 0) {
-        throw new IllegalStateException("decode failed: " + decSamples);
-      }
-
-      for (int i = 0; i < Math.min(decSamples, 10); i++) {
-        short value = pcmOut.getShort(i * 2);
-        System.out.println("pcmOut[" + i + "] = " + value);
-      }
     } finally {
       MediaCodec.destroyEncoder(encoder);
       MediaCodec.destroyDecoder(decoder);
@@ -107,139 +135,49 @@ public class MediaCodecDemoG722 {
 
 ---
 
-## Example: PCMU encode / decode
+# Example: PCMU Encode / Decode
 
 ```java
-package com.litongjava.media;
-
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-
-public class MediaCodecDemoPcmu {
-
-  public static void main(String[] args) {
-    int codecType = MediaCodec.CODEC_PCMU;
-    int sampleRate = 8000;
-    int channels = 1;
-    int bitrate = 0;
-    int options = 0;
-
-    int pcmSamples = MediaCodec.getPcmSamplesPer20ms(codecType, sampleRate, channels);
-    int encodedBytes = MediaCodec.getEncodedBytesPer20ms(codecType, sampleRate, channels, bitrate);
-
-    ByteBuffer pcmIn = ByteBuffer.allocateDirect(pcmSamples * 2).order(ByteOrder.LITTLE_ENDIAN);
-    ByteBuffer encoded = ByteBuffer.allocateDirect(encodedBytes);
-    ByteBuffer pcmOut = ByteBuffer.allocateDirect(pcmSamples * 2).order(ByteOrder.LITTLE_ENDIAN);
-
-    for (int i = 0; i < pcmSamples; i++) {
-      short sample = (short) ((i % 40 - 20) * 500);
-      pcmIn.putShort(i * 2, sample);
-    }
-
-    long encoder = MediaCodec.createEncoder(codecType, sampleRate, channels, bitrate, options);
-    long decoder = MediaCodec.createDecoder(codecType, sampleRate, channels, bitrate, options);
-
-    if (encoder == 0 || decoder == 0) {
-      throw new IllegalStateException("create encoder/decoder failed");
-    }
-
-    try {
-      int encLen = MediaCodec.encodeDirect(encoder, pcmIn, pcmSamples, encoded);
-      System.out.println("PCMU encoded bytes = " + encLen);
-
-      if (encLen < 0) {
-        throw new IllegalStateException("encode failed: " + encLen);
-      }
-
-      int decSamples = MediaCodec.decodeDirect(decoder, encoded, encLen, pcmOut);
-      System.out.println("PCMU decoded samples = " + decSamples);
-
-      if (decSamples < 0) {
-        throw new IllegalStateException("decode failed: " + decSamples);
-      }
-
-      for (int i = 0; i < Math.min(decSamples, 10); i++) {
-        short value = pcmOut.getShort(i * 2);
-        System.out.println("pcmOut[" + i + "] = " + value);
-      }
-    } finally {
-      MediaCodec.destroyEncoder(encoder);
-      MediaCodec.destroyDecoder(decoder);
-    }
-  }
-}
+int codecType = MediaCodec.CODEC_PCMU;
+int sampleRate = 8000;
+int channels = 1;
+int bitrate = 0;
+int options = 0;
 ```
+
+调用方式与 G722 相同。
 
 ---
 
-## Example: PCMA encode / decode
+# Example: PCMA Encode / Decode
 
 ```java
-package com.litongjava.media;
-
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-
-public class MediaCodecDemoPcma {
-
-  public static void main(String[] args) {
-    int codecType = MediaCodec.CODEC_PCMA;
-    int sampleRate = 8000;
-    int channels = 1;
-    int bitrate = 0;
-    int options = 0;
-
-    int pcmSamples = MediaCodec.getPcmSamplesPer20ms(codecType, sampleRate, channels);
-    int encodedBytes = MediaCodec.getEncodedBytesPer20ms(codecType, sampleRate, channels, bitrate);
-
-    ByteBuffer pcmIn = ByteBuffer.allocateDirect(pcmSamples * 2).order(ByteOrder.LITTLE_ENDIAN);
-    ByteBuffer encoded = ByteBuffer.allocateDirect(encodedBytes);
-    ByteBuffer pcmOut = ByteBuffer.allocateDirect(pcmSamples * 2).order(ByteOrder.LITTLE_ENDIAN);
-
-    for (int i = 0; i < pcmSamples; i++) {
-      short sample = (short) ((i % 50 - 25) * 400);
-      pcmIn.putShort(i * 2, sample);
-    }
-
-    long encoder = MediaCodec.createEncoder(codecType, sampleRate, channels, bitrate, options);
-    long decoder = MediaCodec.createDecoder(codecType, sampleRate, channels, bitrate, options);
-
-    if (encoder == 0 || decoder == 0) {
-      throw new IllegalStateException("create encoder/decoder failed");
-    }
-
-    try {
-      int encLen = MediaCodec.encodeDirect(encoder, pcmIn, pcmSamples, encoded);
-      System.out.println("PCMA encoded bytes = " + encLen);
-
-      if (encLen < 0) {
-        throw new IllegalStateException("encode failed: " + encLen);
-      }
-
-      int decSamples = MediaCodec.decodeDirect(decoder, encoded, encLen, pcmOut);
-      System.out.println("PCMA decoded samples = " + decSamples);
-
-      if (decSamples < 0) {
-        throw new IllegalStateException("decode failed: " + decSamples);
-      }
-
-      for (int i = 0; i < Math.min(decSamples, 10); i++) {
-        short value = pcmOut.getShort(i * 2);
-        System.out.println("pcmOut[" + i + "] = " + value);
-      }
-    } finally {
-      MediaCodec.destroyEncoder(encoder);
-      MediaCodec.destroyDecoder(decoder);
-    }
-  }
-}
+int codecType = MediaCodec.CODEC_PCMA;
+int sampleRate = 8000;
+int channels = 1;
+int bitrate = 0;
+int options = 0;
 ```
+
+调用方式与 PCMU 相同。
 
 ---
 
-## Notes
+# Frame Size Reference (20ms)
 
-### 1. 必须使用 DirectByteBuffer
+| Codec    | PCM Samples | PCM Bytes | Encoded Bytes |
+| -------- | ----------- | --------- | ------------- |
+| PCMU     | 160         | 320       | 160           |
+| PCMA     | 160         | 320       | 160           |
+| G722 64k | 320         | 640       | 160           |
+| G722 56k | 320         | 640       | 140           |
+| G722 48k | 320         | 640       | 120           |
+
+---
+
+# Usage Notes
+
+## 1 必须使用 DirectByteBuffer
 
 正确：
 
@@ -247,17 +185,33 @@ public class MediaCodecDemoPcma {
 ByteBuffer.allocateDirect(size)
 ```
 
-不要用：
+错误：
 
 ```java
-ByteBuffer.wrap(new byte[size])
+ByteBuffer.wrap(byte[])
 ```
+
+JNI 使用：
+
+```
+GetDirectBufferAddress()
+```
+
+实现 **zero-copy 音频处理**。
 
 ---
 
-### 2. PCM 必须是 little-endian 16-bit
+## 2 PCM Format
 
-建议：
+必须使用：
+
+```
+16-bit signed PCM
+little-endian
+mono
+```
+
+推荐：
 
 ```java
 ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN)
@@ -265,29 +219,54 @@ ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN)
 
 ---
 
-### 3. G711 参数
+## 3 G711 Parameters
 
-* `sampleRate = 8000`
-* `channels = 1`
-* `bitrate = 0`
-* `options = 0`
-
----
-
-### 4. G722 参数
-
-常规宽带模式：
-
-* `sampleRate = 16000`
-* `channels = 1`
-* `bitrate = 64000 / 56000 / 48000`
-* `options = 0`
+```
+sampleRate = 8000
+channels   = 1
+bitrate    = 0
+options    = 0
+```
 
 ---
 
-### 5. 返回值含义
+## 4 G722 Parameters
 
-* `encodeDirect(...)` 返回编码后的字节数
-* `decodeDirect(...)` 返回解码后的 PCM sample 数
-* 返回负数表示错误
+```
+sampleRate = 16000
+channels   = 1
+bitrate    = 64000 / 56000 / 48000
+options    = 0
+```
 
+---
+
+## 5 Return Values
+
+| Method         | Return                   |
+| -------------- | ------------------------ |
+| encodeDirect   | encoded byte count       |
+| decodeDirect   | decoded PCM sample count |
+| negative value | error                    |
+
+---
+
+# Related Project
+
+C codec implementation:
+
+```
+c-media-codec
+```
+
+[https://gitee.com/ppnt/c-media-codec](https://gitee.com/ppnt/c-media-codec)
+
+---
+
+# License
+
+本项目 codec 实现来自：
+
+**WebRTC third_party codec**
+
+遵循 WebRTC 开源协议。
