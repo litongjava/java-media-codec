@@ -33,6 +33,13 @@ public final class MediaCodec {
   static {
     MediaCodecLibraryUtils.load();
   }
+  
+  /**
+   * Initializes and loads the library
+   */
+  public static void init() {
+
+  }
 
   // ---------------------------------------------------------------------------
   // Codec

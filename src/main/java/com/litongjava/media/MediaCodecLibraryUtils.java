@@ -19,7 +19,7 @@ public class MediaCodecLibraryUtils {
     String osName = System.getProperty("os.name").toLowerCase();
     String userHome = System.getProperty("user.home");
 
-    System.out.println("os name: " + osName + " user.home: " + userHome);
+    System.out.println("os name: " + osName + " user.home: " + userHome + " lib name: " + "media-codec");
 
     String archName;
     String libFileName = null;
@@ -33,6 +33,7 @@ public class MediaCodecLibraryUtils {
       archName = DARWIN_ARM64;
 
     } else if (osName.contains("nix") || osName.contains("nux") || osName.contains("aix") || osName.contains("linux")) {
+      libFileName = CodecCore.UNIX_NATIVE_LIBRARY_NAME;
       archName = LINUX_AMD64;
 
     } else {
